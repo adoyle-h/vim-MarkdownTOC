@@ -3,6 +3,10 @@ if exists("g:loaded_MarkdownTocPlugin")
 endif
 let g:loaded_MarkdownTocPlugin = 1
 
+if !exists("g:vmt_depth")
+    let g:vmt_depth = 999
+endif
+
 if !exists("g:vmt_indent")
     let g:vmt_indent = repeat(' ', 4)
 endif
@@ -194,9 +198,13 @@ function! s:GenToc(markdownStyle)
     let l:i = 0
     let l:orders = {}
     for headingLine in l:headingLines
-        let l:headingName = <SID>GetHeadingName(headingLine)
         let l:headingIndents = l:levels[i] - l:minLevel
+        if (l:headingIndents >= g:vmt_depth)
+            let l:i += 1
+            continue
+        endif
 
+        let l:headingName = <SID>GetHeadingName(headingLine)
         let l:headingLink = <SID>GetHeadingLink(l:headingName, a:markdownStyle)
 
         let l:heading = s:GetIndentText(l:headingIndents) 
