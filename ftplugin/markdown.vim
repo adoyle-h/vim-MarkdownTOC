@@ -182,7 +182,7 @@ function! s:GenToc(markdownStyle)
     let l:minLevel = min(l:levels)
 
     if g:vmt_dont_insert_fence == 0
-        put =<SID>GetBeginFence(a:markdownStyle)
+        silent put =<SID>GetBeginFence(a:markdownStyle)
     endif
 
     let l:i = 0
@@ -210,16 +210,16 @@ function! s:GenToc(markdownStyle)
         let l:heading = l:heading . l:vmt_style_symbol . " [" . l:headingName . "]"
         let l:heading = l:heading . "(#" . l:headingLink . ")"
 
-        put =l:heading
+        silent put =l:heading
 
         let l:i += 1
     endfor
 
     " a blank line after toc to avoid effect typo of content below
-    put =''
+    silent put =''
 
     if g:vmt_dont_insert_fence == 0
-        put =<SID>GetEndFence()
+        silent put =<SID>GetEndFence()
     endif
 endfunction
 
@@ -266,7 +266,7 @@ function! s:UpdateToc()
 
         if l:isFirstLine != 0
             call cursor(l:beginLineNumber, 1)
-            put! =''
+            silent put! =''
         endif
 
         call cursor(l:beginLineNumber, 1)
