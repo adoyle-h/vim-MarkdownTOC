@@ -3,6 +3,10 @@ if exists("g:loaded_MarkdownTocPlugin")
 endif
 let g:loaded_MarkdownTocPlugin = 1
 
+if !exists("g:vmt_style")
+    let g:vmt_style = 'default'
+endif
+
 if !exists("g:vmt_signature")
     let g:vmt_signature = 'vim-markdown-toc'
 endif
@@ -182,6 +186,7 @@ function! s:GenToc(markdownStyle)
     endif
 
     let l:i = 0
+    let l:orders = {}
     for headingLine in l:headingLines
         let l:headingName = <SID>GetHeadingName(headingLine)
         let l:headingIndents = l:levels[i] - l:minLevel
@@ -189,7 +194,20 @@ function! s:GenToc(markdownStyle)
         let l:headingLink = <SID>GetHeadingLink(l:headingName, a:markdownStyle)
 
         let l:heading = repeat(s:GetIndentText(), l:headingIndents)
-        let l:heading = l:heading . "* [" . l:headingName . "]"
+
+        if (g:vmt_style == 'ordered')
+            if (!has_key(l:orders, l:headingIndents))
+                let l:orders[l:headingIndents] = 1
+            endif
+            let l:vmt_style_symbol = l:orders[l:headingIndents] . '.'
+            let l:orders[l:headingIndents] += 1
+        elseif (g:vmt_style == 'unordered')
+            let l:vmt_style_symbol = '-'
+        else
+            let l:vmt_style_symbol = '*'
+        endif
+
+        let l:heading = l:heading . l:vmt_style_symbol . " [" . l:headingName . "]"
         let l:heading = l:heading . "(#" . l:headingLink . ")"
 
         put =l:heading
