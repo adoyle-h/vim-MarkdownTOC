@@ -16,7 +16,7 @@ if !exists("g:vmt_style")
 endif
 
 if !exists("g:vmt_signature")
-    let g:vmt_signature = 'vim-markdown-toc'
+    let g:vmt_signature = 'MarkdownTOC'
 endif
 
 if !exists("g:vmt_auto_update_on_save")
@@ -177,12 +177,61 @@ function! GetHeadingLinkTest(headingLine, markdownStyle)
     return <SID>GetHeadingLink(l:headingName, a:markdownStyle)
 endfunction
 
-function! s:GenToc(markdownStyle)
+function! s:parseMarkdownConfig(list)
+    let l:markdownConfig = {}
+
+    for a in a:list
+        let l:s = split(a, '=')
+        if len(l:s) == 1
+            let l:markdownConfig[l:s[0]] = v:true
+        else
+            let l:markdownConfig[l:s[0]] = l:s[1]
+        endif
+    endfor
+
+    return l:markdownConfig
+endfunction
+
+function! s:listMarkdownConfig(config)
+    let l:list = []
+    for [key, value] in items(a:config)
+        if value == v:true
+            call add(l:list, key)
+        else
+            call add(l:list, key . '=' . value)
+        endif
+	endfor
+    return l:list
+endfunction
+
+function! s:GetStyleFromConfig(markdownConfig)
+    if get(a:markdownConfig, 'GFM') == v:true
+        let l:markdownStyle = 'GFM'
+    elseif get(a:markdownConfig, 'Redcarpet') == v:true
+        let l:markdownStyle = 'Redcarpet'
+    else
+        let l:markdownStyle = ''
+    end
+    return l:markdownStyle
+endfunction
+
+function! s:GenToc(markdownConfig)
+    let l:markdownConfig = a:markdownConfig
+    let l:markdownStyle = s:GetStyleFromConfig(l:markdownConfig)
+
+    if (l:markdownStyle != 'GFM' && l:markdownStyle != 'Redcarpet')
+        let l:markdownStyle = 'GFM'
+        let l:markdownConfig['GFM'] = v:true
+    endif
+
+    let l:depth = has_key(l:markdownConfig, 'depth') ? get(l:markdownConfig, 'depth') : g:vmt_depth
+    let l:style = has_key(l:markdownConfig, 'style') ? get(l:markdownConfig, 'style') : g:vmt_style
+
     let l:headingLines = <SID>GetHeadingLines()
     let l:levels = []
 
     let g:GFMHeadingIds = {}
-    
+
     for headingLine in l:headingLines
         call add(l:levels, <SID>GetHeadingLevel(headingLine))
     endfor
@@ -190,7 +239,7 @@ function! s:GenToc(markdownStyle)
     let l:minLevel = min(l:levels)
 
     if g:vmt_dont_insert_fence == 0
-        silent put =<SID>GetBeginFence(a:markdownStyle)
+        silent put =<SID>GetBeginFence(l:markdownConfig)
         " a blank line before TOC content
         silent put =''
     endif
@@ -199,23 +248,23 @@ function! s:GenToc(markdownStyle)
     let l:orders = {}
     for headingLine in l:headingLines
         let l:headingIndents = l:levels[i] - l:minLevel
-        if (l:headingIndents >= g:vmt_depth)
+        if (l:headingIndents >= l:depth)
             let l:i += 1
             continue
         endif
 
         let l:headingName = <SID>GetHeadingName(headingLine)
-        let l:headingLink = <SID>GetHeadingLink(l:headingName, a:markdownStyle)
+        let l:headingLink = <SID>GetHeadingLink(l:headingName, l:markdownStyle)
 
-        let l:heading = s:GetIndentText(l:headingIndents) 
+        let l:heading = s:GetIndentText(l:headingIndents)
 
-        if (g:vmt_style == 'ordered')
+        if (l:style == 'ordered')
             if (!has_key(l:orders, l:headingIndents))
                 let l:orders[l:headingIndents] = 1
             endif
             let l:vmt_style_symbol = l:orders[l:headingIndents] . '.'
             let l:orders[l:headingIndents] += 1
-        elseif (g:vmt_style == 'unordered')
+        elseif (l:style == 'unordered')
             let l:vmt_style_symbol = '-'
         else
             let l:vmt_style_symbol = '*'
@@ -241,16 +290,17 @@ function! s:GetIndentText(indent)
     return repeat(g:vmt_indent, a:indent)
 endfunction
 
-function! s:GetBeginFence(markdownStyle)
-    return "<!-- " . g:vmt_signature . " " . a:markdownStyle . " -->"
+function! s:GetBeginFence(markdownConfig)
+    let l:list = s:listMarkdownConfig(a:markdownConfig)
+    return "<!-- " . g:vmt_signature . " " . join(l:list, ' ') . " -->"
 endfunction
 
 function! s:GetEndFence()
-    return "<!-- " . g:vmt_signature . " -->"
+    return "<!-- /" . g:vmt_signature . " -->"
 endfunction
 
 function! s:GetBeginFencePattern()
-    return "<!-- " . g:vmt_signature . " \\([[:alpha:]]\\+\\) -->"
+    return '<!-- ' . g:vmt_signature . '\([a-zA-Z0-9=* ]\+\)* -->'
 endfunction
 
 function! s:GetEndFencePattern()
@@ -259,40 +309,44 @@ endfunction
 
 function! s:UpdateToc()
     let l:winview = winsaveview()
+    let l:tocBeginPattern = <SID>GetBeginFencePattern()
+
+    normal! gg
+    if search(l:tocBeginPattern, "Wc") == 0
+        call winrestview(l:winview)
+        return
+    endif
+    call winrestview(l:winview)
 
     let l:totalLineNum = line("$")
 
-    let [l:markdownStyle, l:beginLineNumber, l:endLineNumber] = <SID>DeleteExistingToc()
+    let [l:markdownConfig, l:beginLineNumber, l:endLineNumber] = <SID>DeleteExistingToc()
 
-    if l:markdownStyle ==# ""
-        echom "Cannot find existing toc"
-    elseif l:markdownStyle ==# "Unknown"
-        echom "Find unsupported style toc"
-    else
-        let l:isFirstLine = (l:beginLineNumber == 1)
-        if l:beginLineNumber > 1
-            let l:beginLineNumber -= 1
-        endif
+    let l:markdownStyle = s:GetStyleFromConfig(l:markdownConfig)
 
-        if l:isFirstLine != 0
-            call cursor(l:beginLineNumber, 1)
-            silent put! =''
-        endif
+    let l:isFirstLine = (l:beginLineNumber == 1)
+    if l:beginLineNumber > 1
+        let l:beginLineNumber -= 1
+    endif
 
+    if l:isFirstLine != 0
         call cursor(l:beginLineNumber, 1)
-        call <SID>GenToc(l:markdownStyle)
+        silent put! =''
+    endif
 
-        if l:isFirstLine != 0
-            call cursor(l:beginLineNumber, 1)
-            normal! dd
-        endif
+    call cursor(l:beginLineNumber, 1)
+    call <SID>GenToc(l:markdownConfig)
 
-        " fix line number to avoid shake
-        if l:winview['lnum'] > l:endLineNumber
-            let l:diff = line("$") - l:totalLineNum
-            let l:winview['lnum'] += l:diff
-            let l:winview['topline'] += l:diff
-        endif
+    if l:isFirstLine != 0
+        call cursor(l:beginLineNumber, 1)
+        normal! dd
+    endif
+
+    " fix line number to avoid shake
+    if l:winview['lnum'] > l:endLineNumber
+        let l:diff = line("$") - l:totalLineNum
+        let l:winview['lnum'] += l:diff
+        let l:winview['topline'] += l:diff
     endif
 
     call winrestview(l:winview)
@@ -306,41 +360,38 @@ function! s:DeleteExistingToc()
     let l:tocBeginPattern = <SID>GetBeginFencePattern()
     let l:tocEndPattern = <SID>GetEndFencePattern()
 
-    let l:markdownStyle = ""
     let l:beginLineNumber = -1
     let l:endLineNumber= -1
 
     let l:flags = "Wc"
+    let l:markdownConfig = {}
     if search(l:tocBeginPattern, l:flags) != 0
         let l:beginLine = getline(".")
         let l:beginLineNumber = line(".")
+        let l:matches = matchlist(l:beginLine, l:tocBeginPattern)[1]
+        let l:markdownConfig = s:parseMarkdownConfig(split(l:matches, ' '))
 
         if search(l:tocEndPattern, l:flags) != 0
-            let l:markdownStyle = matchlist(l:beginLine, l:tocBeginPattern)[1]
-            if l:markdownStyle != "GFM" && l:markdownStyle != "Redcarpet"
-                let l:markdownStyle = "Unknown"
-            else
-                let l:endLineNumber = line(".")
-                execute l:beginLineNumber. "," . l:endLineNumber. "delete_"
-            end
+            let l:endLineNumber = line(".")
+            execute l:beginLineNumber . "," . l:endLineNumber . "delete _"
         else
-            echom "Cannot find toc end fence"
+            echoe "Cannot find toc end fence. tocEndPattern: " . l:tocEndPattern
         endif
     else
-        echom "Cannot find toc begin fence"
+        echoe "Cannot find toc begin fence. tocBeginPattern: " . l:tocBeginPattern
     endif
 
     call winrestview(l:winview)
 
-    return [l:markdownStyle, l:beginLineNumber, l:endLineNumber]
+    return [l:markdownConfig, l:beginLineNumber, l:endLineNumber]
 endfunction
 
-command! GenTocGFM :call <SID>GenToc("GFM")
-command! GenTocRedcarpet :call <SID>GenToc("Redcarpet")
+command! GenTocGFM :call <SID>GenToc(["GFM"])
+command! GenTocRedcarpet :call <SID>GenToc(["Redcarpet"])
 command! UpdateToc :call <SID>UpdateToc()
-command! TocInsert :call <SID>GenToc("GFM")
+command! TocInsert :call <SID>GenToc(["GFM"])
 command! TocUpdate :call <SID>UpdateToc()
 
 if g:vmt_auto_update_on_save == 1
-    autocmd BufWritePre *.{md,mdown,mkd,mkdn,markdown,mdwn} :silent! UpdateToc
+    autocmd BufWritePre *.{md,mdown,mkd,mkdn,markdown,mdwn} :silent UpdateToc
 endif
