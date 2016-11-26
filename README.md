@@ -2,6 +2,8 @@
 
 A vim plugin to generate table of contents for Markdown files.
 
+Compatible with [Sublime MarkdownToc](https://packagecontrol.io/packages/MarkdownTOC)
+
 [中文版使用指南][7]
 
 ## Table of Contents
