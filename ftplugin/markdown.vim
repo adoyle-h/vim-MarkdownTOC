@@ -183,6 +183,8 @@ function! s:GenToc(markdownStyle)
 
     if g:vmt_dont_insert_fence == 0
         silent put =<SID>GetBeginFence(a:markdownStyle)
+        " a blank line before TOC content
+        silent put =''
     endif
 
     let l:i = 0
