@@ -310,6 +310,8 @@ endfunction
 command! GenTocGFM :call <SID>GenToc("GFM")
 command! GenTocRedcarpet :call <SID>GenToc("Redcarpet")
 command! UpdateToc :call <SID>UpdateToc()
+command! TocInsert :call <SID>GenToc("GFM")
+command! TocUpdate :call <SID>UpdateToc()
 
 if g:vmt_auto_update_on_save == 1
     autocmd BufWritePre *.{md,mdown,mkd,mkdn,markdown,mdwn} :silent! UpdateToc
