@@ -3,6 +3,10 @@ if exists("g:loaded_MarkdownTocPlugin")
 endif
 let g:loaded_MarkdownTocPlugin = 1
 
+if !exists("g:vmt_signature")
+    let g:vmt_signature = 'vim-markdown-toc'
+endif
+
 if !exists("g:vmt_auto_update_on_save")
     let g:vmt_auto_update_on_save = 1
 endif
@@ -210,15 +214,15 @@ function! s:GetIndentText()
 endfunction
 
 function! s:GetBeginFence(markdownStyle)
-    return "<!-- vim-markdown-toc " . a:markdownStyle . " -->"
+    return "<!-- " . g:vmt_signature . " " . a:markdownStyle . " -->"
 endfunction
 
 function! s:GetEndFence()
-    return "<!-- vim-markdown-toc -->"
+    return "<!-- " . g:vmt_signature . " -->"
 endfunction
 
 function! s:GetBeginFencePattern()
-    return "<!-- vim-markdown-toc \\([[:alpha:]]\\+\\) -->"
+    return "<!-- " . g:vmt_signature . " \\([[:alpha:]]\\+\\) -->"
 endfunction
 
 function! s:GetEndFencePattern()
