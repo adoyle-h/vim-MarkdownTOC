@@ -3,6 +3,10 @@ if exists("g:loaded_MarkdownTocPlugin")
 endif
 let g:loaded_MarkdownTocPlugin = 1
 
+if !exists("g:vmt_indent")
+    let g:vmt_indent = repeat(' ', 4)
+endif
+
 if !exists("g:vmt_style")
     let g:vmt_style = 'default'
 endif
@@ -195,7 +199,7 @@ function! s:GenToc(markdownStyle)
 
         let l:headingLink = <SID>GetHeadingLink(l:headingName, a:markdownStyle)
 
-        let l:heading = repeat(s:GetIndentText(), l:headingIndents)
+        let l:heading = s:GetIndentText(l:headingIndents) 
 
         if (g:vmt_style == 'ordered')
             if (!has_key(l:orders, l:headingIndents))
@@ -225,12 +229,8 @@ function! s:GenToc(markdownStyle)
     endif
 endfunction
 
-function! s:GetIndentText()
-    if &expandtab
-        return repeat(" ", &shiftwidth)
-    else
-        return "\t"
-    endif
+function! s:GetIndentText(indent)
+    return repeat(g:vmt_indent, a:indent)
 endfunction
 
 function! s:GetBeginFence(markdownStyle)
