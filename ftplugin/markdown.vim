@@ -200,7 +200,7 @@ function! s:listMarkdownConfig(config)
         else
             call add(l:list, key . '=' . value)
         endif
-	endfor
+    endfor
     return l:list
 endfunction
 
@@ -386,10 +386,10 @@ function! s:DeleteExistingToc()
     return [l:markdownConfig, l:beginLineNumber, l:endLineNumber]
 endfunction
 
-command! GenTocGFM :call <SID>GenToc(["GFM"])
-command! GenTocRedcarpet :call <SID>GenToc(["Redcarpet"])
+command! GenTocGFM :call <SID>GenToc({"GFM": v:true})
+command! GenTocRedcarpet :call <SID>GenToc({"Redcarpet": v:true})
 command! UpdateToc :call <SID>UpdateToc()
-command! TocInsert :call <SID>GenToc(["GFM"])
+command! TocInsert :call <SID>GenToc({"GFM": v:true})
 command! TocUpdate :call <SID>UpdateToc()
 
 if g:vmt_auto_update_on_save == 1
